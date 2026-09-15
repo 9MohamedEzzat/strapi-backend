@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "doctor_accounts",
+  "info": {
+    "singularName": "doctor-account",
+    "pluralName": "doctor-accounts",
+    "displayName": "Doctor Account",
+    "description": "Links a registered user to a doctor card."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "doctor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::doctor.doctor"
+    }
+  }
+}
