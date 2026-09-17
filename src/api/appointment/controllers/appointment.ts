@@ -94,12 +94,12 @@ export default factories.createCoreController('api::appointment.appointment', ()
         .documents('api::doctor.doctor')
         .findOne({ documentId: doctor });
       if (doc) doctorLabel = doc.name_ar || doc.name || doctor;
-      await sendNotification('حجز موعد جديد - New Appointment', [
-        ['المريض / Patient', userName],
-        ['البريد / Email', email],
-        ['الطبيب / Doctor', doctorLabel],
-        ['التاريخ / Date', date],
-        ['الوقت / Time', time],
+      await sendNotification('New Appointment', [
+        ['Patient', userName],
+        ['Email', email],
+        ['Doctor', doctorLabel],
+        ['Date', date],
+        ['Time', time],
       ]);
     } catch (e) {
       strapi.log.error(
