@@ -24,6 +24,24 @@ const deniedTypes = [
 ];
 
 const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin => ({
+  email: {
+    config: {
+      provider: 'nodemailer',
+      providerOptions: {
+        host: env('SMTP_HOST'),
+        port: env.int('SMTP_PORT', 587),
+        secure: env.bool('SMTP_SECURE', false),
+        auth: {
+          user: env('SMTP_USERNAME'),
+          pass: env('SMTP_PASSWORD'),
+        },
+      },
+      settings: {
+        defaultFrom: env('EMAIL_FROM', 'Ehgez Tabibak <no-reply@ehgeztabibak.app>'),
+        defaultReplyTo: env('EMAIL_REPLY_TO', 'ehgeztabibak@outlook.com'),
+      },
+    },
+  },
   'users-permissions': {
     config: {
       jwtManagement: 'refresh',

@@ -1,0 +1,9 @@
+node_modules
+node_modules.bak
+.tmp
+_tmp_inspect
+dist
+.strapi
+database
+build
+*.log

@@ -4,6 +4,7 @@
 
 import { factories } from '@strapi/strapi';
 import { errors } from '@strapi/utils';
+import { sendNotification } from '../../../utils/mailer';
 
 export default factories.createCoreController('api::appointment.appointment', () => ({
   async find(ctx: any) {
@@ -86,6 +87,24 @@ export default factories.createCoreController('api::appointment.appointment', ()
     } catch (e: any) {
       const msg = (e && e.message) || 'Failed to create appointment';
       throw new errors.ValidationError(msg);
+    }
+    try {
+      let doctorLabel: string = doctor;
+      const doc: any = await strapi
+        .documents('api::doctor.doctor')
+        .findOne({ documentId: doctor });
+      if (doc) doctorLabel = doc.name_ar || doc.name || doctor;
+      await sendNotification('حجز موعد جديد - New Appointment', [
+        ['المريض / Patient', userName],
+        ['البريد / Email', email],
+        ['الطبيب / Doctor', doctorLabel],
+        ['التاريخ / Date', date],
+        ['الوقت / Time', time],
+      ]);
+    } catch (e) {
+      strapi.log.error(
+        `[booking-notify] ${e instanceof Error ? e.message : String(e)}`
+      );
     }
     return { data: entity };
   },
