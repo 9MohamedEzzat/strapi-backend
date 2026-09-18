@@ -54,12 +54,31 @@ export default factories.createCoreController('api::appointment.appointment', ()
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       throw new errors.ValidationError('Missing "data" payload in the request body');
     }
-    const { userName, email, date, time, doctor, user } = data;
+    // Booking requires a signed-in account. The create route is public in the
+    // router config, so we verify the bearer token manually here.
+    let jwtUser: any = null;
+    try {
+      jwtUser = await strapi
+        .plugin('users-permissions')
+        .service('jwt')
+        .getToken(ctx);
+    } catch {
+      jwtUser = null;
+    }
+    if (!jwtUser || !jwtUser.id) {
+      throw new errors.UnauthorizedError(
+        'You must be signed in to book an appointment'
+      );
+    }
+    const { userName, email, date, time, doctor, phone } = data;
     if (!userName || typeof userName !== 'string') {
       throw new errors.ValidationError('userName is required');
     }
     if (!email || typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email)) {
       throw new errors.ValidationError('email is required and must be valid');
+    }
+    if (!phone || typeof phone !== 'string' || !/^[0-9+\-\s()]{6,20}$/.test(phone.trim())) {
+      throw new errors.ValidationError('phone is required and must be valid');
     }
     if (!date || typeof date !== 'string') {
       throw new errors.ValidationError('date is required');
@@ -76,12 +95,11 @@ export default factories.createCoreController('api::appointment.appointment', ()
         data: {
           userName,
           email,
+          phone: phone.trim(),
           date,
           time,
           doctor,
-          ...(user !== undefined && user !== null && user !== ''
-            ? { user: String(user) }
-            : {}),
+          user: String(jwtUser.id),
         },
       });
     } catch (e: any) {
@@ -97,6 +115,7 @@ export default factories.createCoreController('api::appointment.appointment', ()
       await sendNotification('New Appointment', [
         ['Patient', userName],
         ['Email', email],
+        ['Phone', phone.trim()],
         ['Doctor', doctorLabel],
         ['Date', date],
         ['Time', time],
@@ -121,7 +140,7 @@ export default factories.createCoreController('api::appointment.appointment', ()
     try {
       appointment = await strapi
         .documents('api::appointment.appointment')
-        .findOne({ documentId: id });
+        .findOne({ documentId: id, populate: ['doctor'] });
     } catch {
       throw new errors.NotFoundError('Appointment not found');
     }
@@ -151,6 +170,24 @@ export default factories.createCoreController('api::appointment.appointment', ()
     const updated = await strapi
       .documents('api::appointment.appointment')
       .update({ documentId: id, data: { canceled: true } });
+    try {
+      const rawDoc = Array.isArray(appointment.doctor)
+        ? appointment.doctor[0]
+        : appointment.doctor;
+      const doctorLabel = rawDoc ? rawDoc.name_ar || rawDoc.name || '' : '';
+      await sendNotification('Appointment Canceled', [
+        ['Patient', appointment.userName],
+        ['Email', appointment.email],
+        ['Phone', appointment.phone],
+        ['Doctor', doctorLabel],
+        ['Date', appointment.date],
+        ['Time', appointment.time],
+      ]);
+    } catch (e) {
+      strapi.log.error(
+        `[cancel-notify] ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
     return { data: updated };
   },
   async mine(ctx: any) {
